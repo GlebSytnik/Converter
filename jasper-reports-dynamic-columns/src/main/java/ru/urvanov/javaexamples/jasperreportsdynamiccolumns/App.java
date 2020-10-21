@@ -1,5 +1,6 @@
 package ru.urvanov.javaexamples.jasperreportsdynamiccolumns;
 
+import java.io.DataInput;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -8,6 +9,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.util.JSONPObject;
 import net.sf.jasperreports.engine.JRDataSource;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JRLineBox;
@@ -28,13 +32,16 @@ import net.sf.jasperreports.engine.design.JRDesignStyle;
 import net.sf.jasperreports.engine.design.JRDesignTextField;
 import net.sf.jasperreports.engine.design.JRDesignVariable;
 import net.sf.jasperreports.engine.design.JasperDesign;
+import net.sf.jasperreports.engine.export.JRPdfExporter;
 import net.sf.jasperreports.engine.export.JRXlsExporter;
 import net.sf.jasperreports.engine.type.CalculationEnum;
 import net.sf.jasperreports.engine.type.ResetTypeEnum;
 import net.sf.jasperreports.engine.type.WhenNoDataTypeEnum;
 import net.sf.jasperreports.export.SimpleExporterInput;
 import net.sf.jasperreports.export.SimpleOutputStreamExporterOutput;
+import net.sf.jasperreports.export.SimplePdfReportConfiguration;
 import net.sf.jasperreports.export.SimpleXlsReportConfiguration;
+import org.json.JSONObject;
 
 /**
  * Пример генерации отчёта в JasperReports программно.
@@ -52,6 +59,10 @@ public class App {
     }
 
     public static void generateReport() throws JRException, IOException {
+        JSONObject jsonObj = new JSONObject();
+
+        jsonObj.put("id", 0);
+        jsonObj.put("name", "testName");
         JasperDesign jasperDesign = createDesign();
         JasperReport jasperReport = JasperCompileManager
                 .compileReport(jasperDesign);
@@ -63,7 +74,7 @@ public class App {
         JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport,
                 params, jrDataSource);
 
-        try (FileOutputStream baos = new FileOutputStream("dynamicReport.xls")) {
+       /* try (FileOutputStream baos = new FileOutputStream("dynamicReport.xls")) {
             JRXlsExporter xlsExporter = new JRXlsExporter();
             xlsExporter.setExporterInput(new SimpleExporterInput(jasperPrint));
             xlsExporter.setExporterOutput(new SimpleOutputStreamExporterOutput(
@@ -72,6 +83,20 @@ public class App {
             configuration.setOnePagePerSheet(false);
             xlsExporter.setConfiguration(configuration);
             xlsExporter.exportReport();
+
+
+        }*/
+        try (FileOutputStream baos = new FileOutputStream("dynamicReport1.pdf")) {
+            JRPdfExporter pdfExporter = new JRPdfExporter();
+            pdfExporter.setExporterInput(new SimpleExporterInput(jasperPrint));
+            pdfExporter.setExporterOutput(new SimpleOutputStreamExporterOutput(
+                    baos));
+            SimplePdfReportConfiguration configuration = new SimplePdfReportConfiguration();
+            //configuration.setOnePagePerSheet(false);
+            pdfExporter.setConfiguration(configuration);
+            pdfExporter.exportReport();
+
+
         }
     }
 
@@ -100,7 +125,7 @@ public class App {
         return new JRMapCollectionDataSource(preparedData);
     }
 
-    public static JasperDesign createDesign() throws JRException {
+    public static JasperDesign createDesign() throws JRException, IOException {
         // Эквивалентно StaticText в JasperStudio
         JRDesignStaticText staticText = null;
 
@@ -185,6 +210,9 @@ public class App {
         endDateParameter.setValueClass(java.util.Date.class);
         jasperDesign.addParameter(endDateParameter);
 
+
+
+
         // Поля отчёта.
         field = new JRDesignField();
         field.setName("name");
@@ -197,6 +225,17 @@ public class App {
         jasperDesign.addField(field);
         // В случае отчёта с динамическими полями пробегаемся по количеству
         // полей и добавляем JRDesignField для каждого с уникальным именем.
+      /*  ObjectMapper mapper = new ObjectMapper();
+        String source = mapper.readValue((DataInput) jsonObject, String.class);
+        Map<String,Object> result = new ObjectMapper().readValue(source, HashMap.class);
+        for (Map.Entry<String, Object> entry : result.entrySet()){
+            JRDesignField field1 = new JRDesignField();
+            field1.setName(entry.getKey());
+            field1.setValueClass(entry.getKey().getClass());
+            jasperDesign.addField(field1);
+        }*/
+
+
 
         // Подсчитываем сумму
         variable = new JRDesignVariable();
@@ -285,7 +324,7 @@ public class App {
         jasperDesign.setPageFooter(band);
 
         // Summary band
-        band = new JRDesignBand();
+       /* band = new JRDesignBand();
         band.setHeight(ROW_HEIGHT);
         x = 0;
         y = 0;
@@ -311,7 +350,13 @@ public class App {
         textField.setStyle(headerStyle);
         band.addElement(textField);
         x += textField.getWidth();
-        jasperDesign.setSummary(band);
+        jasperDesign.setSummary(band);*/
         return jasperDesign;
+    }
+    public void compile() throws JRException, IOException {
+        long start = System.currentTimeMillis();
+        JasperDesign jasperDesign = createDesign();
+        JasperCompileManager.compileReportToFile(jasperDesign, "build/reports/NoXmlDesignReport.jasper");
+        System.err.println("Compile time : " + (System.currentTimeMillis() - start));
     }
 }
